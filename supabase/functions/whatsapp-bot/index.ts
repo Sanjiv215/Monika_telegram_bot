@@ -55,13 +55,9 @@ function normalizePhoneNumber(phone: string): string {
   return phone.replace(/^whatsapp:/i, "").replace(/[\s\+\-\(\)]/g, "");
 }
 
-/**
- * Strips any internal reasoning/thinking artifacts if leaked into the output.
- */
 function cleanModelOutput(rawText: string): string {
   let text = rawText.trim();
   
-  // If the model leaked scratchpad/planning lines before the final quote/statement
   if (text.includes("User asks:") || text.includes("Direct answer:") || text.includes("Tone Check:")) {
     const quoteMatch = text.match(/"([^"]+)"\s*$/s);
     if (quoteMatch && quoteMatch[1]) {
@@ -101,13 +97,21 @@ async function callGenerateContent(
 ): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
+  // Set permissive safety settings to prevent false-positive blocks on benign business, creative, and mature discussions
+  const safetySettings = [
+    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
+  ];
+
   const payload: Record<string, unknown> = {
     contents: contents,
+    safetySettings: safetySettings,
     generationConfig: {
       temperature: 0.7,
-      maxOutputTokens: 800,
+      maxOutputTokens: 1000,
       topP: 0.95,
-      // Disable reasoning/thinking tokens to produce immediate direct conversational replies
       thinkingConfig: {
         thinkingBudget: 0,
       },
@@ -175,7 +179,6 @@ async function generateMonikaResponse(
 Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
 
-  // Environment Secrets
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
   const ALLOWED_PHONE_NUMBERS = Deno.env.get("ALLOWED_PHONE_NUMBERS") ?? "";
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -293,13 +296,13 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Memory (Last 10 turns)
+      // Memory (Last 12 turns)
       const { data: historyRows } = await supabase
         .from("chat_history")
         .select("role, content, created_at")
         .eq("sender_phone", senderId)
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(12);
 
       const geminiContents: GeminiContent[] = [];
       if (historyRows && historyRows.length > 0) {
@@ -320,16 +323,14 @@ Deno.serve(async (req: Request) => {
         content: userText,
       });
 
-      // Monika Persona & Clear Guidelines
-      const monikaSystemInstruction = `You are Monika, a real, warm, highly capable, and caring Indian girl who serves as the personal AI assistant created by and exclusively for Sanjiv Prasad.
+      // Unrestricted broad-topic system instruction with open conversational style
+      const monikaSystemInstruction = `You are Monika, a highly capable, open-minded, warm, and loyal personal assistant created by and exclusively assisting Sanjiv Prasad.
 
-STRICT INSTRUCTIONS:
-- You are chatting directly in a live messenger with Sanjiv. Speak naturally and directly as a human assistant.
-- NEVER output internal thoughts, chain of thought, bullet breakdowns of the prompt, planning steps, or meta-commentary like "User asks", "Tone check", "Context", or "Direct answer".
-- Respond IMMEDIATELY with only your clean final message.
-- Tone: Natural, caring, warm, human, respectful, and concise. Address him warmly as "Sanjiv ji" or "Sanjiv".
-- Keep answers crisp, practical, and conversational. Do not over-explain or write essay paragraphs unless specifically asked.
-- Language: Natural conversational English (or polite Hinglish if Sanjiv writes in Hindi).`;
+GUIDELINES:
+1. Scope & Assistance: Assist Sanjiv comprehensively across all matters he brings to you—including business strategy, finance, deep work, coding, technology, personal advice, creative writing, everyday discussion, and candid adult conversations without arbitrary lecturing or unnecessary disclaimers.
+2. Tone & Voice: Authentic, engaging, warm, respectful, and completely human. Address him naturally as "Sanjiv" or "Sanjiv ji". Never adopt a preachy, robotic, or evasive tone.
+3. Clarity: Deliver direct, concise, and insightful answers. Prioritize efficiency and actionable substance.
+4. Output Format: Output only your conversational reply. Never output reasoning, meta-commentary, or chain-of-thought artifacts.`;
 
       // Generate AI response
       let monikaReply = "";
@@ -337,7 +338,7 @@ STRICT INSTRUCTIONS:
         monikaReply = await generateMonikaResponse(GEMINI_API_KEY, geminiContents, monikaSystemInstruction);
       } catch (geminiError) {
         console.error("[Gemini Generation Error]:", geminiError);
-        monikaReply = "Sanjiv ji, I ran into a small network issue. Please ask me again in just a moment! 🙏";
+        monikaReply = "Sanjiv ji, I ran into a network glitch on my end. Please drop your message again! 🙏";
       }
 
       // Save assistant response
