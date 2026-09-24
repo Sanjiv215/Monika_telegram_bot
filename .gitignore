@@ -1,0 +1,42 @@
+# ==============================================================================
+# Git Ignore Configuration
+# ==============================================================================
+
+# Environment Secrets (NEVER COMMIT SENSITIVE KEYS)
+.env
+.env.*
+!.env.example
+
+# Supabase Local CLI & Cache
+.supabase/
+.temp/
+supabase/.temp/
+
+# Deno & Node
+.deno/
+deno.lock
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE & Editor Files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
