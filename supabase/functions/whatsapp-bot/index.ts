@@ -144,6 +144,9 @@ async function callGenerateContent(
   return cleanModelOutput(text);
 }
 
+// In-memory cache for the currently verified working model
+let activeWorkingModel: string = "gemini-3.6-flash";
+
 async function generateMonikaResponse(
   apiKey: string,
   history: GeminiContent[],
@@ -153,6 +156,14 @@ async function generateMonikaResponse(
     throw new Error("GEMINI_API_KEY is not configured.");
   }
 
+  // 1. Fast path: Attempt generation directly with active cached model
+  try {
+    return await callGenerateContent(apiKey, activeWorkingModel, history, systemInstruction);
+  } catch (initialErr: unknown) {
+    console.warn(`[Gemini Cache Miss] Cached model '${activeWorkingModel}' failed. Triggering discovery...`, initialErr);
+  }
+
+  // 2. Fallback path: Discover available models dynamically
   const candidateModels = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"];
   const discoveredModels = await getAvailableGeminiModels(apiKey);
   const allModels = Array.from(new Set([...candidateModels, ...discoveredModels]));
@@ -160,8 +171,12 @@ async function generateMonikaResponse(
   const failureLog: string[] = [];
 
   for (const model of allModels) {
+    if (model === activeWorkingModel) continue; // already tried above
     try {
-      return await callGenerateContent(apiKey, model, history, systemInstruction);
+      const result = await callGenerateContent(apiKey, model, history, systemInstruction);
+      activeWorkingModel = model; // Cache the new working model
+      console.log(`[Gemini Cache Updated] New active model: ${model}`);
+      return result;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(`[Gemini fallback] ${model} failed:`, msg);
