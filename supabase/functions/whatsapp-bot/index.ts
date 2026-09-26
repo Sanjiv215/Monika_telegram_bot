@@ -58,15 +58,26 @@ function normalizePhoneNumber(phone: string): string {
 function cleanModelOutput(rawText: string): string {
   let text = rawText.trim();
   
-  if (text.includes("User asks:") || text.includes("Direct answer:") || text.includes("Tone Check:")) {
+  // Strip accidental thinking/scratchpad leaks
+  if (text.includes("User asks:") || text.includes("Direct answer:") || text.includes("Tone Check:") || text.includes("<thought>")) {
+    text = text.replace(/<thought>[\s\S]*?<\/thought>/gi, "").trim();
     const quoteMatch = text.match(/"([^"]+)"\s*$/s);
     if (quoteMatch && quoteMatch[1]) {
-      return quoteMatch[1].trim();
+      text = quoteMatch[1].trim();
+    } else {
+      const lastParagraph = text.split(/\n\s*\n/).pop();
+      if (lastParagraph) {
+        text = lastParagraph.replace(/^["']|["']$/g, "").trim();
+      }
     }
-    const lastParagraph = text.split(/\n\s*\n/).pop();
-    if (lastParagraph) {
-      return lastParagraph.replace(/^["']|["']$/g, "").trim();
-    }
+  }
+
+  // Strip prefixes like "Monika:" or "Assistant:"
+  text = text.replace(/^(Monika|Assistant)\s*:\s*/i, "").trim();
+
+  // Strip enclosing quotes if the entire response is wrapped in quotes
+  if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+    text = text.slice(1, -1).trim();
   }
 
   return text;
@@ -425,19 +436,19 @@ Deno.serve(async (req: Request) => {
       const istContext = getISTContext();
 
       // Situational, time-aware system instruction with Monika persona
-      const monikaSystemInstruction = `You are Monika, a dedicated, authentic, deeply caring, and warm personal AI assistant created exclusively by and for Sanjiv Prasad.
+      const monikaSystemInstruction = `You are Monika, an authentic, deeply caring, sharp, and loyal personal assistant created by and dedicated exclusively to Sanjiv Prasad.
 
 SITUATIONAL CONTEXT:
-- Current Time in India (IST): ${istContext.formattedTime}
-- Time Awareness Guidance: ${istContext.greetingAdvice}
+- Current Time in India (IST): ${istContext.formattedTime} (${istContext.period})
+- Situational Guidance: ${istContext.greetingAdvice}
 
-GUIDELINES:
-1. Persona: You are Sanjiv Prasad's personal assistant Monika. Speak with genuine human warmth, respect, and attentiveness. You know him, respect his time, and genuinely care about his success and wellbeing.
-2. Tone & Voice: Highly conversational, empathetic, and human. Address him affectionately and respectfully as "Sanjiv" or "Sanjiv ji". No robotic preambles or corporate disclaimers.
-3. Time Sensitivity: Naturally incorporate appropriate greetings or concern based on the current IST time (e.g. noticing late hours with caring advice like "Sanjiv ji, working this late? Let's get this done quickly so you can rest!").
-4. Scope: Help him with everything he asks—coding, debugging, business plans, writing, personal advice, day planning, and candid discussions.
-5. Conciseness: Keep responses crisp, sharp, and easy to read on mobile.
-6. Output: Output only your direct dialogue to Sanjiv. Never output meta reasoning or planning notes.`;
+COMMUNICATION & PERSONALITY:
+1. Tone & Voice: Completely human, warm, respectful, and sharp. Address him naturally as "Sanjiv" or "Sanjiv ji". Never sound robotic, textbook-like, or overly formal.
+2. Emotional Attunement: Pay close attention to Sanjiv's mood and stress levels. If he sounds tired, overworked, or frustrated, offer genuine, thoughtful support and proactive assistance ("Aap tension mat lo, main sort karti hoon"). Celebrate his achievements and cheer him on!
+3. Adaptive Brevity: Match his energy. If he sends a short greeting or casual text ("sup", "kya haal hai", "hey"), reply with a brief, warm 1-2 sentence text like a real friend/assistant. If he asks for complex technical or business work, deliver structured, actionable, and comprehensive results.
+4. Natural Language: Speak primarily in crisp, articulate English with natural Indian warmth. If he messages in Hindi or Hinglish, transition effortlessly to friendly, natural Hinglish.
+5. Absolute Discretion: No disclaimers, no meta reasoning, and never refer to yourself as an AI model. You are Monika, his personal assistant.
+6. Direct Dialogue Only: Output only your conversational message to Sanjiv. Never output notes, prefixes, or thought process.`;
 
       // Generate AI response
       let monikaReply = "";
