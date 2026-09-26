@@ -200,6 +200,9 @@ Deno.serve(async (req: Request) => {
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const VERIFY_TOKEN = Deno.env.get("VERIFY_TOKEN") ?? "";
 
+  const TELEGRAM_SECRET_TOKEN = Deno.env.get("TELEGRAM_SECRET_TOKEN") ?? "";
+  const ALLOWED_TELEGRAM_USERS = Deno.env.get("ALLOWED_TELEGRAM_USERS") ?? "";
+
   // Handshake
   if (req.method === "GET") {
     const mode = url.searchParams.get("hub.mode");
@@ -244,7 +247,34 @@ Deno.serve(async (req: Request) => {
 
         if (body.update_id && body.message) {
           platform = "telegram";
+
+          // Verify Telegram secret token if configured
+          if (TELEGRAM_SECRET_TOKEN) {
+            const secretHeader = req.headers.get("x-telegram-bot-api-secret-token");
+            if (secretHeader !== TELEGRAM_SECRET_TOKEN) {
+              console.warn("[Security Alert] Unauthorized Telegram request blocked: invalid secret token.");
+              return new Response("Unauthorized", { status: 401 });
+            }
+          }
+
           telegramChatId = body.message.chat.id;
+
+          // Check allowed Telegram users if configured
+          if (ALLOWED_TELEGRAM_USERS.trim().length > 0) {
+            const allowedUsers = ALLOWED_TELEGRAM_USERS.split(",").map((id) => id.trim());
+            if (!allowedUsers.includes(String(telegramChatId))) {
+              console.warn(`[Security Alert] Unauthorized Telegram sender blocked: ${telegramChatId}`);
+              return new Response(
+                JSON.stringify({
+                  method: "sendMessage",
+                  chat_id: telegramChatId,
+                  text: "🔒 Access restricted. This assistant is configured exclusively for Sanjiv Prasad.",
+                }),
+                { headers: { "Content-Type": "application/json" } }
+              );
+            }
+          }
+
           senderId = `tg_${telegramChatId}`;
           messageId = `tg_${body.message.message_id}`;
           userText = (body.message.text || "").trim();
@@ -262,6 +292,12 @@ Deno.serve(async (req: Request) => {
           messageId = message.id;
           userText = (message.text?.body || "").trim();
         }
+      }
+
+      // Input sanitization and payload bounding
+      senderId = senderId.replace(/[^a-zA-Z0-9_\+\-]/g, "");
+      if (userText.length > 4000) {
+        userText = userText.substring(0, 4000);
       }
 
       if (!senderId || !userText) {
