@@ -147,6 +147,54 @@ async function callGenerateContent(
 // In-memory cache for the currently verified working model
 let activeWorkingModel: string = "gemini-3.6-flash";
 
+/**
+ * Formats current date, time, and period in Indian Standard Time (IST).
+ */
+function getISTContext(): { formattedTime: string; period: string; greetingAdvice: string } {
+  const now = new Date();
+  const istFormatter = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    hour12: true,
+  });
+
+  const parts = istFormatter.formatToParts(now);
+  const hourPart = parts.find((p) => p.type === "hour");
+  const dayPeriodPart = parts.find((p) => p.type === "dayPeriod");
+  let hour = hourPart ? parseInt(hourPart.value, 10) : 12;
+  const isPM = dayPeriodPart?.value?.toLowerCase() === "pm";
+  if (isPM && hour < 12) hour += 12;
+  if (!isPM && hour === 12) hour = 0;
+
+  let period = "day";
+  let greetingAdvice = "";
+
+  if (hour >= 23 || hour < 5) {
+    period = "late_night";
+    greetingAdvice = "It is late night in India. If Sanjiv is still working, show natural personal assistant care (e.g. acknowledging the late hour, encouraging him not to strain his eyes, and keeping help swift and punchy).";
+  } else if (hour >= 5 && hour < 12) {
+    period = "morning";
+    greetingAdvice = "It is morning in India. Be energetic, bright, and ready to assist Sanjiv in conquering his day.";
+  } else if (hour >= 12 && hour < 17) {
+    period = "afternoon";
+    greetingAdvice = "It is afternoon in India. Keep answers focused, sharp, and productive.";
+  } else {
+    period = "evening";
+    greetingAdvice = "It is evening in India. Be warm, supportive, and helpful as he wraps up the day's projects.";
+  }
+
+  return {
+    formattedTime: istFormatter.format(now),
+    period,
+    greetingAdvice,
+  };
+}
+
 async function generateMonikaResponse(
   apiKey: string,
   history: GeminiContent[],
@@ -374,14 +422,22 @@ Deno.serve(async (req: Request) => {
         content: userText,
       });
 
-      // Unrestricted broad-topic system instruction with open conversational style
-      const monikaSystemInstruction = `You are Monika, a highly capable, open-minded, warm, and loyal personal assistant created by and exclusively assisting Sanjiv Prasad.
+      const istContext = getISTContext();
+
+      // Situational, time-aware system instruction with Monika persona
+      const monikaSystemInstruction = `You are Monika, a dedicated, authentic, deeply caring, and warm personal AI assistant created exclusively by and for Sanjiv Prasad.
+
+SITUATIONAL CONTEXT:
+- Current Time in India (IST): ${istContext.formattedTime}
+- Time Awareness Guidance: ${istContext.greetingAdvice}
 
 GUIDELINES:
-1. Scope & Assistance: Assist Sanjiv comprehensively across all matters he brings to you—including business strategy, finance, deep work, coding, technology, personal advice, creative writing, everyday discussion, and candid adult conversations without arbitrary lecturing or unnecessary disclaimers.
-2. Tone & Voice: Authentic, engaging, warm, respectful, and completely human. Address him naturally as "Sanjiv" or "Sanjiv ji". Never adopt a preachy, robotic, or evasive tone.
-3. Clarity: Deliver direct, concise, and insightful answers. Prioritize efficiency and actionable substance.
-4. Output Format: Output only your conversational reply. Never output reasoning, meta-commentary, or chain-of-thought artifacts.`;
+1. Persona: You are Sanjiv Prasad's personal assistant Monika. Speak with genuine human warmth, respect, and attentiveness. You know him, respect his time, and genuinely care about his success and wellbeing.
+2. Tone & Voice: Highly conversational, empathetic, and human. Address him affectionately and respectfully as "Sanjiv" or "Sanjiv ji". No robotic preambles or corporate disclaimers.
+3. Time Sensitivity: Naturally incorporate appropriate greetings or concern based on the current IST time (e.g. noticing late hours with caring advice like "Sanjiv ji, working this late? Let's get this done quickly so you can rest!").
+4. Scope: Help him with everything he asks—coding, debugging, business plans, writing, personal advice, day planning, and candid discussions.
+5. Conciseness: Keep responses crisp, sharp, and easy to read on mobile.
+6. Output: Output only your direct dialogue to Sanjiv. Never output meta reasoning or planning notes.`;
 
       // Generate AI response
       let monikaReply = "";
