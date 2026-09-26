@@ -384,16 +384,25 @@ Deno.serve(async (req: Request) => {
         auth: { persistSession: false },
       });
 
-      // Deduplication
-      if (messageId) {
-        const { error: dedupError } = await supabase
-          .from("processed_messages")
-          .insert({ whatsapp_message_id: messageId, sender_phone: senderId });
+      // 1. Run deduplication check and chat history fetch concurrently to minimize DB latency
+      const dedupPromise = messageId
+        ? supabase
+            .from("processed_messages")
+            .insert({ whatsapp_message_id: messageId, sender_phone: senderId })
+        : Promise.resolve({ error: null });
 
-        if (dedupError && dedupError.code === "23505") {
-          console.log(`[Deduplication] Message ${messageId} already handled.`);
-          return new Response("OK", { status: 200 });
-        }
+      const historyPromise = supabase
+        .from("chat_history")
+        .select("role, content, created_at")
+        .eq("sender_phone", senderId)
+        .order("created_at", { ascending: false })
+        .limit(12);
+
+      const [dedupResult, historyResult] = await Promise.all([dedupPromise, historyPromise]);
+
+      if (dedupResult.error && (dedupResult.error as { code?: string }).code === "23505") {
+        console.log(`[Deduplication] Message ${messageId} already handled.`);
+        return new Response("OK", { status: 200 });
       }
 
       // Whitelist
@@ -407,13 +416,7 @@ Deno.serve(async (req: Request) => {
       }
 
       // Memory (Last 12 turns)
-      const { data: historyRows } = await supabase
-        .from("chat_history")
-        .select("role, content, created_at")
-        .eq("sender_phone", senderId)
-        .order("created_at", { ascending: false })
-        .limit(12);
-
+      const historyRows = historyResult.data;
       const geminiContents: GeminiContent[] = [];
       if (historyRows && historyRows.length > 0) {
         const chronological = [...historyRows].reverse();
