@@ -6,14 +6,19 @@
 
 ## ✨ Features & Capabilities
 
-- **Dedicated Persona**: Designed as an authentic, warm, loyal, and sharp Indian personal assistant created exclusively for **Sanjiv Prasad**.
-- **Human Touch & Emotional Attunement**:
-  - Responds with genuine assistant-like care for Sanjiv's wellbeing, energy, and work-life balance.
-  - Understands and dynamically switches between crisp English and natural, polite Hinglish/Hindi.
-  - Matches conversation energy: sends short 1-2 sentence replies to quick greetings, and structured in-depth answers to technical or business tasks.
+- **Dedicated Girlfriend Persona**:
+  - Designed as an affectionate, sweet, intelligent, caring, and playful Indian companion created exclusively for **Sanjiv Prasad**.
+  - Speaks with emotional warmth, personal care (*"Khana khaya aapne?"*, *"Main hoon na aapke saath ❤️"*), and attentiveness to your health and stress.
+- **Strict Multi-Language & Script Mirroring**:
+  - Automatically identifies and replies in the **exact language and script** you message in.
+  - Native fluency across **Hindi (हिंदी)**, **Hinglish**, **Marathi (मराठी)**, **Bhojpuri**, **Bengali (বাংলা)**, **Urdu (اردو)**, **Kannada (ಕನ್ನಡ)**, and **English**.
+  - Never forces English or adds artificial translation appendices; speaks like a native speaker of your dialect.
+- **Anti-Bot Conversational Dynamics**:
+  - No robotic bullet points, headers, or corporate preambles in casual chats.
+  - Matches message pacing (sweet 1-2 sentence texts for casual greetings, deep insights for technical/work problems).
 - **Real-Time IST Situational Awareness**:
   - Automatically tracks current Indian Standard Time (IST).
-  - Contextual time sensitivity: notices late night hours (encouraging rest/hydration) and brings morning focus.
+  - Contextual time sensitivity: late-night caring check-ins and morning motivation.
 - **High-Efficiency Engine**:
   - **In-Memory Model Caching**: Caches verified Gemini models across warm Edge Function invocations, eliminating redundant discovery calls and saving ~600ms per request.
   - **Parallel Database Operations**: Concurrent execution of deduplication and conversational memory retrieval cuts database roundtrip time in half.
