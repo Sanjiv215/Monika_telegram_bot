@@ -11,8 +11,8 @@
   - Speaks with emotional warmth, personal care (*"Khana khaya aapne?"*, *"Main hoon na aapke saath ❤️"*), and attentiveness to your health and stress.
 - **Strict Multi-Language & Script Mirroring**:
   - Automatically identifies and replies in the **exact language and script** you message in.
-  - Native fluency across **Hindi (हिंदी)**, **Hinglish**, **Marathi (मराठी)**, **Bhojpuri**, **Bengali (বাংলা)**, **Urdu (اردو)**, **Kannada (ಕನ್ನಡ)**, and **English**.
-  - Never forces English or adds artificial translation appendices; speaks like a native speaker of your dialect.
+  - Native fluency across **Urdu (اردو / Roman Urdu)**, **Arabic (العربية / Franco-Arabic)**, **Hindi (हिंदी)**, **Hinglish**, **Marathi (मराठी)**, **Bhojpuri**, **Bengali (বাংলা)**, **Kannada (ಕನ್ನಡ)**, and **English**.
+  - Never forces English or adds artificial translation appendices; speaks like a native speaker of your language and dialect.
 - **Anti-Bot Conversational Dynamics**:
   - No robotic bullet points, headers, or corporate preambles in casual chats.
   - Matches message pacing (sweet 1-2 sentence texts for casual greetings, deep insights for technical/work problems).
